@@ -4,13 +4,13 @@ var slidercalc = require('./lib/slidercalc.js');
 
 function beatmapParser() {
 
-  const sectionReg = /^\[([^\]]+)\]$/;
-  const keyValReg = /^([^:\s]+)\s*:\s*(.+)$/;
+  const sectionRegex = /^\[([^\]]+)\]$/;
+  const keyValuePairRegex = /^([^:\s]+)\s*:\s*(.+)$/;
   const curveTypes = {
-    C: "catmull",
-    B: "bezier",
-    L: "linear",
-    P: "pass-through"
+    C: 'catmull',
+    B: 'bezier',
+    L: 'linear',
+    P: 'pass-through'
   };
 
   var beatmap = {
@@ -239,62 +239,35 @@ function beatmapParser() {
   };
 
   /**
-   * Parse an event line
-   * @param  {String} line
-   */
-  const parseEvent = (line) => {
-    /**
-     * Background line : 0,0,"bg.jpg"
-     * TODO: confirm that the second member is always zero
-     *
-     * Breaktimes lines : 2,1000,2000
-     * second integer is start offset
-     * third integer is end offset
-     */
-    members = line.split(',');
-
-    if (members[0] == '0' && members[1] == '0' && members[2]) {
-      var bgName = members[2].trim();
-
-      if (bgName.charAt(0) == '"' && bgName.charAt(bgName.length - 1) == '"') {
-        beatmap.bgFilename = bgName.substring(1, bgName.length - 1);
-      } else {
-        beatmap.bgFilename = bgName;
-      }
-    } else if (members[0] == '2' && /^\d+$/.test(members[1]) && /^\d+$/.test(members[2])) {
-      beatmap.breakTimes.push({
-        startTime: parseInt(members[1]),
-        endTime: parseInt(members[2])
-      });
-    }
-  };
-
-  /**
    * Compute the total time and the draining time of the beatmap
    */
-  const computeDuration = () => {
-    var firstObject = beatmap.hitObjects[0];
-    var lastObject = beatmap.hitObjects[beatmap.hitObjects.length - 1];
+  const computeDuration = (hitObjects, breakTimes) => {
+    var firstObject = hitObjects[0];
+    var lastObject = hitObjects[hitObjects.length - 1];
 
     var totalBreakTime = 0;
 
-    beatmap.breakTimes.forEach(breakTime => {
+    breakTimes.forEach(breakTime => {
       totalBreakTime += breakTime.endTime - breakTime.startTime;
     });
 
+    var durations = {
+      totalTime: 0,
+      drainingTime: 0
+    };
+
     if (firstObject && lastObject) {
-      beatmap.totalTime = Math.floor(lastObject.startTime / 1000);
-      beatmap.drainingTime = Math.floor((lastObject.startTime - firstObject.startTime - totalBreakTime) / 1000);
-    } else {
-      beatmap.totalTime = 0;
-      beatmap.drainingTime = 0;
+      durations.totalTime = Math.floor(lastObject.startTime / 1000);
+      durations.drainingTime = Math.floor((lastObject.startTime - firstObject.startTime - totalBreakTime) / 1000);
     }
+
+    return durations;
   };
 
   /**
    * Browse objects and compute max combo
    */
-  const computeMaxCombo = () => {
+  const computeMaxCombo = beatmap => {
     if (beatmap.timingPoints.length === 0) { return; }
 
     var maxCombo = 0;
@@ -323,7 +296,7 @@ function beatmapParser() {
       maxCombo++;
     });
 
-    beatmap.maxCombo = maxCombo;
+    return maxCombo;
   };
 
   /**
@@ -341,7 +314,7 @@ function beatmapParser() {
     var currentSection = null;
 
     lines.forEach((line, index) => {
-      var section = (line.match(sectionReg) || [])[1];
+      var section = (line.match(sectionRegex) || [])[1];
       if (!section) {
         var version = line.match(/^osu file format (v\d+)$/);
         if (version)
@@ -378,7 +351,7 @@ function beatmapParser() {
 
     propSections.forEach(section => {
       rawSections[section].forEach(line => {
-        const match = line.match(keyValReg);
+        const match = line.match(keyValuePairRegex);
         if (match)
           beatmap[match[1]] = match[2];
       });
@@ -388,7 +361,25 @@ function beatmapParser() {
       beatmap.tagsArray = beatmap.Tags.split(' ');
     }
 
-    eventsLines.forEach(parseEvent);
+    eventsLines.forEach(line => {
+      var members = line.split(',');
+
+      if (members[0] == '0' && members[1] == '0' && members.length >= 3) {
+        var bgName = members[2].trim();
+
+        if (bgName.charAt(0) == '"' && bgName.charAt(bgName.length - 1) == '"') {
+          beatmap.bgFilename = bgName.substring(1, bgName.length - 1);
+        } else {
+          beatmap.bgFilename = bgName;
+        }
+      } else if (members[0] == '2' && /^\d+$/.test(members[1]) && /^\d+$/.test(members[2])) {
+        beatmap.breakTimes.push({
+          startTime: parseInt(members[1]),
+          endTime: parseInt(members[2])
+        });
+      }
+    });
+
     beatmap.breakTimes.sort((a, b) => a.startTime - b.startTime);
 
     timingLines.forEach(parseTimingPoint);
@@ -396,8 +387,8 @@ function beatmapParser() {
 
     var timingPoints = beatmap.timingPoints;
 
-    for (var i = 1, l = timingPoints.length; i < l; i++) {
-      if (!timingPoints[i].hasOwnProperty('bpm')) {
+    for (var i = 1; i < timingPoints.length; i++) {
+      if (!timingPoints[i]['bpm']) {
         timingPoints[i].beatLength = timingPoints[i - 1].beatLength;
         timingPoints[i].bpm = timingPoints[i - 1].bpm;
       }
@@ -406,8 +397,9 @@ function beatmapParser() {
     objectLines.forEach(parseHitObject);
     beatmap.hitObjects.sort((a, b) => a.startTime - b.startTime);
 
-    computeMaxCombo();
-    computeDuration();
+    beatmap.maxCombo = computeMaxCombo(beatmap);
+    const durations = computeDuration(beatmap.hitObjects, beatmap.breakTimes);
+    Object.assign(beatmap, durations);
 
     return beatmap;
   };
