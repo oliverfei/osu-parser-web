@@ -1,7 +1,7 @@
 {
-  "name": "osu-parser",
+  "name": "osu-parser-web",
   "version": "0.3.3",
-  "description": "converts osu files into javascript objects",
+  "description": "converts beatmap data into a single object",
   "main": "index.js",
   "scripts": {
     "test": "mocha"
@@ -11,14 +11,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/nojhamster/osu-parser.git"
+    "url": "https://github.com/oamaok/osu-parser.git"
   },
   "keywords": [
     "osu",
     "beatmap",
     "parser"
   ],
-  "author": "nojhamster",
+  "author": "nojhamster, oamaok",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/nojhamster/osu-parser/issues"
