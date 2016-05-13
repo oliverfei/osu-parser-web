@@ -267,19 +267,13 @@ function beatmapParser() {
   /**
    * Browse objects and compute max combo
    */
-  const computeMaxCombo = beatmap => {
-    if (beatmap.timingPoints.length === 0) { return; }
-
+  const computeMaxCombo = (hitObjects, timingPoints, sliderMultiplier, sliderTickRate) => {
     var maxCombo = 0;
-    var sliderMultiplier = parseFloat(beatmap.SliderMultiplier);
-    var sliderTickRate = parseInt(beatmap.SliderTickRate);
-
-    var timingPoints = beatmap.timingPoints;
     var currentTiming = timingPoints[0];
     var nextOffset = timingPoints[1] ? timingPoints[1].offset : Infinity;
     var i = 1;
 
-    beatmap.hitObjects.forEach(hitObject => {
+    hitObjects.forEach(hitObject => {
       if (hitObject.startTime >= nextOffset) {
         currentTiming = timingPoints[i++];
         nextOffset = timingPoints[i] ? timingPoints[i].offset : Infinity;
@@ -397,7 +391,12 @@ function beatmapParser() {
     objectLines.forEach(parseHitObject);
     beatmap.hitObjects.sort((a, b) => a.startTime - b.startTime);
 
-    beatmap.maxCombo = computeMaxCombo(beatmap);
+    beatmap.maxCombo = computeMaxCombo(
+      beatmap.hitObjects,
+      beatmap.timingPoints,
+      parseFloat(beatmap.SliderMultiplier),
+      parseInt(beatmap.SliderTickRate)
+    );
     const durations = computeDuration(beatmap.hitObjects, beatmap.breakTimes);
     Object.assign(beatmap, durations);
 
