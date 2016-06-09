@@ -326,7 +326,7 @@ function beatmapParser() {
 
     // Validate beatmap sections
     const requiredSections = [
-      'General', 'Metadata', 'Difficulty', 'Colours', 'Editor',
+      'General', 'Metadata', 'Difficulty',
       'Events', 'TimingPoints', 'HitObjects',
     ];
 
