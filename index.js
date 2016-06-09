@@ -344,6 +344,8 @@ function beatmapParser() {
     ];
 
     propSections.forEach(section => {
+      if (!Array.isArray(rawSections[section]))
+        return;
       rawSections[section].forEach(line => {
         const match = line.match(keyValuePairRegex);
         if (match)
